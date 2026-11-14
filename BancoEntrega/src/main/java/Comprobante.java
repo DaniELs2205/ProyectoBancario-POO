@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -25,6 +26,10 @@ public final class Comprobante {
     public static Path guardar(Usuario usuario, Movimiento movimiento) throws IOException {
         Path carpeta = Path.of("comprobantes");
         Files.createDirectories(carpeta);
+=======
+package BancoEntrega.src.main.java;
+public Depo Comprobante {
+>>>>>>> 7d469c6bb62c2bf01f59f4f267bab01867554cfb
     
         String nombre = usuario.getNombreUsuario() + "-" + movimiento.getReferencia()
                 + "-" + UUID.randomUUID().toString().substring(0, 8) + ".txt";

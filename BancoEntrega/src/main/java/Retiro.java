@@ -1,3 +1,5 @@
+package BancoEntrega.src.main.java;
+
 import java.math.BigDecimal;
 
 public class Retiro extends Movimiento {

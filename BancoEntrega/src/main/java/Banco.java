@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import java.math.BigDecimal;
 import java.util.Arrays;
 
@@ -43,3 +44,15 @@ public class Banco {
     }
     public int getCantidadUsuarios() { return cantidad; }
 }
+=======
+package BancoEntrega.src.main.java;
+
+
+
+
+
+
+
+
+
+>>>>>>> 7d469c6bb62c2bf01f59f4f267bab01867554cfb
