@@ -1,4 +1,5 @@
-package BancoEntrega.src.main.java;
 public class Inicio {
-    
+    public static void main(String[] args) {
+        Main.main(args);
+    }
 }
