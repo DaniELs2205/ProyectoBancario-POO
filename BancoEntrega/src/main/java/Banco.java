@@ -14,15 +14,13 @@ public class Banco {
 
             if (existente.getCodigo().equals(nuevo.getCodigo())) {
                 throw new IllegalArgumentException(
-                    "Ese código ya está registrado. Elige uno diferente."
-                );
+                        "Ese código ya está registrado. Elige uno diferente.");
             }
 
             if (existente.getNombreUsuario()
-                         .equalsIgnoreCase(nuevo.getNombreUsuario())) {
+                    .equalsIgnoreCase(nuevo.getNombreUsuario())) {
                 throw new IllegalArgumentException(
-                    "Ese nombre de usuario ya está registrado."
-                );
+                        "Ese nombre de usuario ya está registrado.");
             }
         }
 
@@ -46,13 +44,34 @@ public class Banco {
         }
 
         throw new IllegalArgumentException(
-            "Código no registrado. Revisa el código o crea tu usuario."
-        );
+                "Código no registrado. Revisa el código o crea tu usuario.");
+    }
+
+    public CuentaBancaria buscarPorNumeroCuenta(String numero) {
+        if (numero == null || numero.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Ingresa el número de cuenta destino.");
+        }
+
+        String normalizado = numero.trim();
+
+        for (int i = 0; i < cantidad; i++) {
+            if (cuentas[i].getNumeroCuenta().equals(normalizado)) {
+                return cuentas[i];
+            }
+        }
+
+        throw new IllegalArgumentException(
+                "Número de cuenta no registrado. "
+                + "Usa el número de cuenta, no el código de acceso.");
     }
 
     public ConsultaHistorial consultarHistorial(String codigo) {
-        // Consultar no modifica la cuenta elegida para operar.
         return new ConsultaHistorial(ingresar(codigo));
+    }
+
+    public CuentaBancaria[] getCuentas() {
+        return Arrays.copyOf(cuentas, cantidad);
     }
 
     public Usuario[] getUsuarios() {
