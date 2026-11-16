@@ -16,6 +16,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 public class Main extends JFrame {
+
     private static final Color VERDE = new Color(20, 100, 78);
     private static final Color FONDO = new Color(242, 246, 249);
 
@@ -54,12 +55,21 @@ public class Main extends JFrame {
     private final JTextField numeroDestino = campoNumerico();
 
     private final JComboBox<String> filtro = new JComboBox<>(
-            new String[]{"Todos", "Depósitos", "Retiros", "Transferencias"});
+            new String[]{
+                "Todos",
+                "Depósitos",
+                "Retiros",
+                "Transferencias"
+            }
+    );
 
     private final DefaultTableModel modelo = new DefaultTableModel(
             new String[]{
-                "N.º", "Fecha y hora", "Operación",
-                "Monto (Q)", "Saldo resultante (Q)"
+                "N.º",
+                "Fecha y hora",
+                "Operación",
+                "Monto (Q)",
+                "Saldo resultante (Q)"
             }, 0) {
         @Override
         public boolean isCellEditable(int fila, int columna) {
@@ -70,8 +80,11 @@ public class Main extends JFrame {
     private final JTable tabla = new JTable(modelo);
 
     private final DefaultTableModel modeloUsuarios = new DefaultTableModel(
-            new String[]{"Usuario", "Código de acceso", "Número de cuenta"},
-            0) {
+            new String[]{
+                "Usuario",
+                "Código de acceso",
+                "Número de cuenta"
+            }, 0) {
         @Override
         public boolean isCellEditable(int fila, int columna) {
             return false;
@@ -87,6 +100,7 @@ public class Main extends JFrame {
             try {
                 for (UIManager.LookAndFeelInfo tema
                         : UIManager.getInstalledLookAndFeels()) {
+
                     if (tema.getName().equals("Nimbus")) {
                         UIManager.setLookAndFeel(tema.getClassName());
                         break;
@@ -99,9 +113,13 @@ public class Main extends JFrame {
             Font fuente = new Font(Font.SANS_SERIF, Font.PLAIN, 14);
 
             String[] claves = {
-                "Label.font", "Button.font", "TextField.font",
-                "TabbedPane.font", "ComboBox.font",
-                "Table.font", "TableHeader.font"
+                "Label.font",
+                "Button.font",
+                "TextField.font",
+                "TabbedPane.font",
+                "ComboBox.font",
+                "Table.font",
+                "TableHeader.font"
             };
 
             for (String clave : claves) {
@@ -109,6 +127,7 @@ public class Main extends JFrame {
             }
 
             UIManager.put("control", FONDO);
+
             new Main().setVisible(true);
         });
     }
@@ -135,24 +154,30 @@ public class Main extends JFrame {
         JLabel nombre = new JLabel("BANCO UVG");
         nombre.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 28));
         nombre.setForeground(VERDE);
+
         cabecera.add(nombre, BorderLayout.NORTH);
 
         JPanel accesoSesion = new JPanel(
-                new FlowLayout(FlowLayout.RIGHT, 0, 0));
+                new FlowLayout(FlowLayout.RIGHT, 0, 0)
+        );
         accesoSesion.setOpaque(false);
 
         cerrarSesion.setFont(
-                cerrarSesion.getFont().deriveFont(Font.BOLD));
+                cerrarSesion.getFont().deriveFont(Font.BOLD)
+        );
         cerrarSesion.setPreferredSize(new Dimension(145, 36));
         cerrarSesion.setToolTipText(
-                "Cerrar la cuenta o consulta actual");
+                "Cerrar la cuenta o consulta actual"
+        );
         cerrarSesion.addActionListener(e -> cerrarSesion());
 
         accesoSesion.add(cerrarSesion);
+
         cabecera.add(accesoSesion, BorderLayout.SOUTH);
         contenido.add(cabecera, BorderLayout.NORTH);
 
         paginas.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
+
         paginas.addTab("Cuentas", crearListaCuentas());
         paginas.addTab("Ingresar", crearIngreso());
         paginas.addTab("Crear usuario", crearRegistro());
@@ -182,7 +207,9 @@ public class Main extends JFrame {
         JPanel pie = new JPanel(new BorderLayout());
         pie.setOpaque(false);
 
-        JPanel salida = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel salida = new JPanel(
+                new FlowLayout(FlowLayout.RIGHT)
+        );
         salida.setOpaque(false);
         salida.add(boton("Salir", e -> salir()));
 
@@ -197,7 +224,10 @@ public class Main extends JFrame {
 
     private void habilitarCuenta(boolean habilitado) {
         for (int i = TAB_OPERACIONES; i < paginas.getTabCount(); i++) {
-            paginas.setEnabledAt(i, i == TAB_HISTORIAL || habilitado);
+            paginas.setEnabledAt(
+                    i,
+                    i == TAB_HISTORIAL || habilitado
+            );
         }
 
         actualizarEstadoSesion();
@@ -222,31 +252,47 @@ public class Main extends JFrame {
         titulo.setForeground(VERDE);
 
         cabecera.add(titulo, BorderLayout.NORTH);
-        cabecera.add(new JLabel(
-                "Ingresa con tu código de acceso. "
-                + "Para transferir, usa el número de cuenta destino."),
-                BorderLayout.SOUTH);
+
+        cabecera.add(
+                new JLabel(
+                        "Ingresa con tu código de acceso. "
+                        + "Para transferir, usa el número de cuenta destino."
+                ),
+                BorderLayout.SOUTH
+        );
 
         panel.add(cabecera, BorderLayout.NORTH);
 
         tablaUsuarios.setRowHeight(36);
+
         tablaUsuarios.getColumnModel().getColumn(0)
                 .setPreferredWidth(280);
+
         tablaUsuarios.getColumnModel().getColumn(1)
                 .setPreferredWidth(220);
+
         tablaUsuarios.getColumnModel().getColumn(2)
                 .setPreferredWidth(280);
 
         tablaUsuarios.setFillsViewportHeight(true);
         tablaUsuarios.setAutoCreateRowSorter(true);
         tablaUsuarios.setSelectionMode(
-                ListSelectionModel.SINGLE_SELECTION);
+                ListSelectionModel.SINGLE_SELECTION
+        );
         tablaUsuarios.getTableHeader().setReorderingAllowed(false);
 
-        panel.add(new JScrollPane(tablaUsuarios), BorderLayout.CENTER);
-        panel.add(new JLabel(
-                "Los usuarios permanecen en esta lista mientras el programa esté abierto."),
-                BorderLayout.SOUTH);
+        panel.add(
+                new JScrollPane(tablaUsuarios),
+                BorderLayout.CENTER
+        );
+
+        panel.add(
+                new JLabel(
+                        "Los usuarios permanecen en esta lista "
+                        + "mientras el programa esté abierto."
+                ),
+                BorderLayout.SOUTH
+        );
 
         return panel;
     }
@@ -262,10 +308,12 @@ public class Main extends JFrame {
         JLabel titulo = new JLabel("Ingresa a tu cuenta");
         titulo.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 24));
         titulo.setForeground(VERDE);
+
         formulario.add(titulo, BorderLayout.NORTH);
 
         JPanel campos = new JPanel(new GridLayout(0, 1, 0, 10));
         campos.setOpaque(false);
+
         campos.add(new JLabel("Código de acceso"));
         campos.add(codigoIngreso);
 
@@ -277,16 +325,19 @@ public class Main extends JFrame {
                         banco.ingresar(codigoIngreso.getText());
 
                 cuenta = encontrada;
+
                 limpiarCamposOperacion();
                 filtro.setSelectedIndex(0);
                 actualizar();
                 habilitarCuenta(true);
 
                 estado.setText(
-                        "Bienvenido. Las operaciones se aplican a esta cuenta.");
+                        "Bienvenido. Las operaciones se aplican a esta cuenta."
+                );
 
                 paginas.setSelectedIndex(TAB_OPERACIONES);
                 codigoIngreso.setText("");
+
             } catch (IllegalArgumentException error) {
                 mostrarError(error.getMessage());
             }
@@ -310,13 +361,19 @@ public class Main extends JFrame {
 
         JLabel titulo = new JLabel("Consultar movimientos e historial");
         titulo.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
+
         formulario.add(titulo, BorderLayout.NORTH);
 
         JPanel campos = new JPanel(new GridLayout(0, 1, 0, 10));
         campos.setOpaque(false);
 
-        campos.add(new JLabel(
-                "Escribe el código de acceso para consultar el historial y saldo."));
+        campos.add(
+                new JLabel(
+                        "Escribe el código de acceso para consultar "
+                        + "el historial y saldo."
+                )
+        );
+
         campos.add(new JLabel("Código de acceso"));
         campos.add(codigoHistorial);
 
@@ -329,24 +386,32 @@ public class Main extends JFrame {
 
                 historialDesbloqueado = true;
 
-                Usuario usuarioConsultado = consultaHistorial.getUsuario();
+                Usuario usuarioConsultado =
+                        consultaHistorial.getUsuario();
 
                 String numeroCuenta = banco.ingresar(
-                        usuarioConsultado.getCodigo()).getNumeroCuenta();
+                        usuarioConsultado.getCodigo()
+                ).getNumeroCuenta();
 
                 titularHistorial.setText(
                         "Titular: " + usuarioConsultado.getNombreCompleto()
                         + " | Usuario: "
                         + usuarioConsultado.getNombreUsuario()
-                        + " | Cuenta: " + numeroCuenta);
+                        + " | Cuenta: " + numeroCuenta
+                );
 
                 saldoHistorial.setText(
                         "Saldo disponible: Q"
-                        + Dinero.formatear(consultaHistorial.getSaldoActual())
+                        + Dinero.formatear(
+                                consultaHistorial.getSaldoActual()
+                        )
                         + "     |     Saldo inicial: Q"
-                        + Dinero.formatear(consultaHistorial.getSaldoInicial())
+                        + Dinero.formatear(
+                                consultaHistorial.getSaldoInicial()
+                        )
                         + "     |     Movimientos: "
-                        + consultaHistorial.getMovimientos().length);
+                        + consultaHistorial.getMovimientos().length
+                );
 
                 codigoHistorial.setText("");
                 filtro.setSelectedIndex(0);
@@ -354,6 +419,7 @@ public class Main extends JFrame {
 
                 tarjetasHistorial.show(panelHistorial, "datos");
                 actualizarEstadoSesion();
+
             } catch (IllegalArgumentException error) {
                 bloquearHistorial();
                 mostrarError(error.getMessage());
@@ -395,11 +461,13 @@ public class Main extends JFrame {
 
         JLabel titulo = new JLabel("Crear usuario y agregar cuenta");
         titulo.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
+
         formulario.add(titulo, BorderLayout.NORTH);
 
         JTextField nombre = new JTextField(28);
         JTextField usuario = new JTextField(28);
         JTextField codigo = new JTextField(28);
+
         JTextField inicial = campoNumerico();
         inicial.setText("0.00");
 
@@ -408,16 +476,29 @@ public class Main extends JFrame {
 
         campos.add(new JLabel("Nombre completo del titular"));
         campos.add(nombre);
+
         campos.add(new JLabel("Nombre de usuario"));
         campos.add(usuario);
+
         campos.add(new JLabel("Código de acceso (lo eliges tú)"));
         campos.add(codigo);
+
         campos.add(new JLabel("Saldo inicial (Q)"));
         campos.add(inicial);
-        campos.add(new JLabel(
-                "El número de cuenta se genera automáticamente al registrar."));
-        campos.add(new JLabel(
-                "Los datos se conservan mientras este programa esté abierto."));
+
+        campos.add(
+                new JLabel(
+                        "El número de cuenta se genera automáticamente "
+                        + "al registrar."
+                )
+        );
+
+        campos.add(
+                new JLabel(
+                        "Los datos se conservan mientras este programa "
+                        + "esté abierto."
+                )
+        );
 
         formulario.add(campos, BorderLayout.CENTER);
 
@@ -454,6 +535,7 @@ public class Main extends JFrame {
 
                 codigoIngreso.setText(asignado);
                 codigoIngreso.requestFocusInWindow();
+
             } catch (IllegalArgumentException error) {
                 mostrarError(error.getMessage());
             }
@@ -522,7 +604,8 @@ public class Main extends JFrame {
         historial.setOpaque(false);
 
         JPanel herramientas = new JPanel(
-                new FlowLayout(FlowLayout.LEFT, 8, 0));
+                new FlowLayout(FlowLayout.LEFT, 8, 0)
+        );
         herramientas.setOpaque(false);
 
         herramientas.add(new JLabel("Historial de movimientos"));
@@ -534,23 +617,36 @@ public class Main extends JFrame {
             }
         });
 
-        herramientas.add(boton(
-                "Buscar por número", e -> buscarMovimiento()));
-        herramientas.add(boton(
-                "Generar comprobante", e -> comprobanteSeleccionado()));
-        herramientas.add(boton("Consultar otro código", e -> {
-            bloquearHistorial();
-            codigoHistorial.requestFocusInWindow();
-        }));
+        herramientas.add(
+                boton("Buscar por número", e -> buscarMovimiento())
+        );
+
+        herramientas.add(
+                boton(
+                        "Generar comprobante",
+                        e -> comprobanteSeleccionado()
+                )
+        );
+
+        herramientas.add(
+                boton("Consultar otro código", e -> {
+                    bloquearHistorial();
+                    codigoHistorial.requestFocusInWindow();
+                })
+        );
 
         JPanel cabeceraHistorial = new JPanel(
-                new GridLayout(0, 1, 0, 8));
+                new GridLayout(0, 1, 0, 8)
+        );
         cabeceraHistorial.setOpaque(false);
 
         titularHistorial.setFont(
-                new Font(Font.SANS_SERIF, Font.BOLD, 15));
+                new Font(Font.SANS_SERIF, Font.BOLD, 15)
+        );
+
         saldoHistorial.setFont(
-                new Font(Font.SANS_SERIF, Font.BOLD, 17));
+                new Font(Font.SANS_SERIF, Font.BOLD, 17)
+        );
         saldoHistorial.setForeground(VERDE);
 
         cabeceraHistorial.add(titularHistorial);
@@ -567,19 +663,25 @@ public class Main extends JFrame {
         tabla.setAutoCreateRowSorter(true);
         tabla.getTableHeader().setReorderingAllowed(false);
 
-        DefaultTableCellRenderer derecha = new DefaultTableCellRenderer() {
+        DefaultTableCellRenderer derecha =
+                new DefaultTableCellRenderer() {
             @Override
             protected void setValue(Object valor) {
-                super.setValue(valor instanceof BigDecimal
-                        ? Dinero.formatear((BigDecimal) valor)
-                        : valor);
+                super.setValue(
+                        valor instanceof BigDecimal
+                                ? Dinero.formatear((BigDecimal) valor)
+                                : valor
+                );
             }
         };
 
         derecha.setHorizontalAlignment(SwingConstants.RIGHT);
 
-        tabla.getColumnModel().getColumn(3).setCellRenderer(derecha);
-        tabla.getColumnModel().getColumn(4).setCellRenderer(derecha);
+        tabla.getColumnModel().getColumn(3)
+                .setCellRenderer(derecha);
+
+        tabla.getColumnModel().getColumn(4)
+                .setCellRenderer(derecha);
 
         tabla.getColumnModel().getColumn(0).setPreferredWidth(45);
         tabla.getColumnModel().getColumn(1).setPreferredWidth(180);
@@ -587,25 +689,36 @@ public class Main extends JFrame {
         tabla.getColumnModel().getColumn(3).setPreferredWidth(150);
         tabla.getColumnModel().getColumn(4).setPreferredWidth(190);
 
-        historial.add(new JScrollPane(tabla), BorderLayout.CENTER);
-        historial.add(new JLabel(
-                "Selecciona una operación para generar su comprobante."),
-                BorderLayout.SOUTH);
+        historial.add(
+                new JScrollPane(tabla),
+                BorderLayout.CENTER
+        );
+
+        historial.add(
+                new JLabel(
+                        "Selecciona una operación para generar su comprobante."
+                ),
+                BorderLayout.SOUTH
+        );
 
         panelHistorial.setOpaque(false);
         panelHistorial.add(crearAccesoHistorial(), "codigo");
         panelHistorial.add(historial, "datos");
+
         tarjetasHistorial.show(panelHistorial, "codigo");
 
         JPanel informacion = new JPanel(new BorderLayout(0, 18));
         informacion.setOpaque(false);
 
         detalleCuenta.setFont(
-                new Font(Font.SANS_SERIF, Font.PLAIN, 16));
+                new Font(Font.SANS_SERIF, Font.PLAIN, 16)
+        );
+
         informacion.add(detalleCuenta, BorderLayout.NORTH);
 
         JPanel operacionesCuenta = new JPanel(
-                new java.awt.GridBagLayout());
+                new java.awt.GridBagLayout()
+        );
         operacionesCuenta.setOpaque(false);
 
         JPanel formulario = new JPanel(new BorderLayout(0, 18));
@@ -614,38 +727,61 @@ public class Main extends JFrame {
 
         JLabel titulo = new JLabel("Operaciones de la cuenta");
         titulo.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
+
         formulario.add(titulo, BorderLayout.NORTH);
 
         JPanel campos = new JPanel(new GridLayout(0, 1, 0, 6));
         campos.setOpaque(false);
 
-        campos.add(new JLabel(
-                "Monto (Q) para depositar, retirar o transferir"));
+        campos.add(
+                new JLabel(
+                        "Monto (Q) para depositar, retirar o transferir"
+                )
+        );
+
         campos.add(montoOperacion);
-        campos.add(new JLabel(
-                "Usa hasta dos decimales. Ejemplo: 150.50"));
-        campos.add(new JLabel(
-                "Número de cuenta destino (solo para transferir)"));
+
+        campos.add(
+                new JLabel(
+                        "Usa hasta dos decimales. Ejemplo: 150.50"
+                )
+        );
+
+        campos.add(
+                new JLabel(
+                        "Número de cuenta destino (solo para transferir)"
+                )
+        );
+
         campos.add(numeroDestino);
 
         formulario.add(campos, BorderLayout.CENTER);
 
         JPanel botones = new JPanel(
-                new FlowLayout(FlowLayout.RIGHT));
+                new FlowLayout(FlowLayout.RIGHT)
+        );
         botones.setOpaque(false);
 
         botones.add(boton("Depositar", e -> operar(true)));
         botones.add(boton("Retirar", e -> operar(false)));
         botones.add(boton("Transferir", e -> transferir()));
-        botones.add(boton("Retirar todo el saldo", e -> retirarTodo()));
+
+        botones.add(
+                boton("Retirar todo el saldo", e -> retirarTodo())
+        );
 
         formulario.add(botones, BorderLayout.SOUTH);
         operacionesCuenta.add(formulario);
 
         informacion.add(operacionesCuenta, BorderLayout.CENTER);
-        informacion.add(new JLabel(
-                "Consulta Movimientos e historial para ver tus operaciones."),
-                BorderLayout.SOUTH);
+
+        informacion.add(
+                new JLabel(
+                        "Consulta Movimientos e historial "
+                        + "para ver tus operaciones."
+                ),
+                BorderLayout.SOUTH
+        );
 
         JScrollPane desplazamiento = new JScrollPane(informacion);
         desplazamiento.setBorder(null);
@@ -672,8 +808,15 @@ public class Main extends JFrame {
 
     private static JTextField campoNumerico() {
         JTextField campo = new JTextField(22);
-        campo.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 18));
-        campo.setMargin(new java.awt.Insets(6, 10, 6, 10));
+
+        campo.setFont(
+                new Font(Font.MONOSPACED, Font.PLAIN, 18)
+        );
+
+        campo.setMargin(
+                new java.awt.Insets(6, 10, 6, 10)
+        );
+
         campo.setPreferredSize(new Dimension(360, 38));
         campo.setMinimumSize(new Dimension(160, 38));
 
@@ -682,10 +825,13 @@ public class Main extends JFrame {
 
     private JPanel tarjeta(String nombre, JLabel valor) {
         JPanel panel = new JPanel(new BorderLayout(0, 8));
+
         panel.setBackground(Color.WHITE);
         panel.setBorder(new EmptyBorder(12, 14, 12, 14));
 
-        valor.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 21));
+        valor.setFont(
+                new Font(Font.SANS_SERIF, Font.BOLD, 21)
+        );
         valor.setForeground(VERDE);
 
         panel.add(new JLabel(nombre), BorderLayout.NORTH);
@@ -695,9 +841,12 @@ public class Main extends JFrame {
     }
 
     private JButton boton(
-            String texto, java.awt.event.ActionListener accion) {
+            String texto,
+            java.awt.event.ActionListener accion) {
+
         JButton boton = new JButton(texto);
         boton.addActionListener(accion);
+
         return boton;
     }
 
@@ -706,7 +855,9 @@ public class Main extends JFrame {
 
         if (!valor.matches("[+-]?[0-9]+(\\.[0-9]{1,2})?")) {
             throw new IllegalArgumentException(
-                    "Escribe un número con máximo dos decimales, por ejemplo 150.50.");
+                    "Escribe un número con máximo dos decimales, "
+                    + "por ejemplo 150.50."
+            );
         }
 
         return new BigDecimal(valor);
@@ -722,6 +873,7 @@ public class Main extends JFrame {
 
             montoOperacion.setText("");
             operacionExitosa(movimiento);
+
         } catch (IllegalArgumentException error) {
             mostrarError(error.getMessage());
         }
@@ -737,21 +889,25 @@ public class Main extends JFrame {
             BigDecimal monto = leerDinero(montoOperacion.getText());
 
             CuentaBancaria destino = banco.buscarPorNumeroCuenta(
-                    numeroDestino.getText().trim());
+                    numeroDestino.getText().trim()
+            );
 
             if (destino == cuenta) {
                 throw new IllegalArgumentException(
-                        "Selecciona una cuenta diferente a la tuya.");
+                        "Selecciona una cuenta diferente a la tuya."
+                );
             }
 
             if (monto.signum() <= 0) {
                 throw new IllegalArgumentException(
-                        "El monto debe ser mayor que cero.");
+                        "El monto debe ser mayor que cero."
+                );
             }
 
             if (monto.compareTo(cuenta.getSaldo()) > 0) {
                 throw new IllegalArgumentException(
-                        "Fondos insuficientes.");
+                        "Fondos insuficientes."
+                );
             }
 
             int opcion = JOptionPane.showConfirmDialog(
@@ -769,17 +925,19 @@ public class Main extends JFrame {
 
             if (opcion != JOptionPane.YES_OPTION) {
                 estado.setText(
-                        "Transferencia cancelada. Los saldos no cambiaron.");
+                        "Transferencia cancelada. Los saldos no cambiaron."
+                );
                 return;
             }
 
-            Movimiento movimiento =
-                    cuenta.transferirA(destino, monto);
+            Movimiento movimiento = cuenta.transferirA(destino, monto);
 
             montoOperacion.setText("");
             numeroDestino.setText("");
+
             bloquearHistorial();
             operacionExitosa(movimiento);
+
         } catch (IllegalArgumentException error) {
             mostrarError(error.getMessage());
         }
@@ -803,6 +961,7 @@ public class Main extends JFrame {
         if (opcion == JOptionPane.YES_OPTION) {
             try {
                 operacionExitosa(cuenta.retirarTodo());
+
             } catch (IllegalArgumentException e) {
                 mostrarError(e.getMessage());
             }
@@ -821,7 +980,8 @@ public class Main extends JFrame {
         estado.setText(
                 tipo + " registrada por Q"
                 + Dinero.formatear(movimiento.getMonto())
-                + ". Consulta el historial para ver el detalle.");
+                + ". Consulta el historial para ver el detalle."
+        );
 
         int opcion = JOptionPane.showConfirmDialog(
                 this,
@@ -841,23 +1001,30 @@ public class Main extends JFrame {
         titular.setText(
                 cuenta.getUsuario().getNombreCompleto()
                 + "  |  Usuario: "
-                + cuenta.getUsuario().getNombreUsuario());
+                + cuenta.getUsuario().getNombreUsuario()
+        );
 
-        saldo.setText("Q" + Dinero.formatear(cuenta.getSaldo()));
+        saldo.setText(
+                "Q" + Dinero.formatear(cuenta.getSaldo())
+        );
 
         depositado.setText(
-                "Q" + Dinero.formatear(cuenta.totalDepositos()));
+                "Q" + Dinero.formatear(cuenta.totalDepositos())
+        );
 
         retirado.setText(
-                "Q" + Dinero.formatear(cuenta.totalRetiros()));
+                "Q" + Dinero.formatear(cuenta.totalRetiros())
+        );
 
         operaciones.setText(
-                String.valueOf(cuenta.getMovimientos().length));
+                String.valueOf(cuenta.getMovimientos().length)
+        );
 
         detalleCuenta.setText(
                 "Número de cuenta: " + cuenta.getNumeroCuenta()
                 + "     |     Saldo inicial: Q"
-                + Dinero.formatear(cuenta.getSaldoInicial()));
+                + Dinero.formatear(cuenta.getSaldoInicial())
+        );
 
         actualizarUsuarios();
         actualizarTabla();
@@ -887,7 +1054,8 @@ public class Main extends JFrame {
         int tipo = filtro.getSelectedIndex();
 
         tabla.getAccessibleContext().setAccessibleDescription(
-                formatearArreglo(consultaHistorial.getMovimientos()));
+                formatearArreglo(consultaHistorial.getMovimientos())
+        );
 
         for (Movimiento m : consultaHistorial.getMovimientos()) {
             if ((tipo == 1 && !(m instanceof Deposito))
@@ -899,7 +1067,8 @@ public class Main extends JFrame {
             modelo.addRow(new Object[]{
                 m.getNumero(),
                 m.getFecha().format(
-                        DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")),
+                        DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
+                ),
                 m.getDescripcion(),
                 m.getMonto(),
                 m.getSaldoResultante()
@@ -921,27 +1090,35 @@ public class Main extends JFrame {
 
         try {
             Movimiento movimiento = consultaHistorial.buscarMovimiento(
-                    Integer.parseInt(numero.trim()));
+                    Integer.parseInt(numero.trim())
+            );
 
             filtro.setSelectedIndex(0);
 
             for (int i = 0; i < modelo.getRowCount(); i++) {
                 if (((Integer) modelo.getValueAt(i, 0))
                         == movimiento.getNumero()) {
+
                     int fila = tabla.convertRowIndexToView(i);
 
                     tabla.setRowSelectionInterval(fila, fila);
+
                     tabla.scrollRectToVisible(
-                            tabla.getCellRect(fila, 0, true));
+                            tabla.getCellRect(fila, 0, true)
+                    );
 
                     estado.setText(
                             "Movimiento encontrado: "
-                            + movimiento.getReferencia());
+                            + movimiento.getReferencia()
+                    );
+
                     break;
                 }
             }
+
         } catch (NumberFormatException e) {
             mostrarError("Escribe un número de movimiento válido.");
+
         } catch (IllegalArgumentException e) {
             mostrarError(e.getMessage());
         }
@@ -960,7 +1137,8 @@ public class Main extends JFrame {
         mostrarComprobante(
                 consultaHistorial.getUsuario(),
                 consultaHistorial.buscarMovimiento(
-                        (Integer) modelo.getValueAt(fila, 0))
+                        (Integer) modelo.getValueAt(fila, 0)
+                )
         );
     }
 
@@ -969,44 +1147,107 @@ public class Main extends JFrame {
     }
 
     private void mostrarComprobante(
-            Usuario usuarioComprobante, Movimiento movimiento) {
+            Usuario usuarioComprobante,
+            Movimiento movimiento) {
+
+        String numeroCuenta = banco.ingresar(
+                usuarioComprobante.getCodigo()
+        ).getNumeroCuenta();
+
+        String html = Comprobante.generarHtml(
+                usuarioComprobante,
+                movimiento,
+                numeroCuenta
+        );
+
         JDialog dialogo = new JDialog(
-                this, "Comprobante " + movimiento.getReferencia(), true);
+                this,
+                "Comprobante de operación",
+                true
+        );
 
-        JTextArea texto = new JTextArea(
-                textoComprobante(usuarioComprobante, movimiento));
+        JEditorPane vista = new JEditorPane("text/html", html);
+        vista.setEditable(false);
+        vista.setBackground(Color.WHITE);
+        vista.setCaretPosition(0);
 
-        texto.setEditable(false);
-        texto.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
-        texto.setBorder(new EmptyBorder(14, 16, 14, 16));
-
-        dialogo.add(new JScrollPane(texto), BorderLayout.CENTER);
+        dialogo.add(
+                new JScrollPane(vista),
+                BorderLayout.CENTER
+        );
 
         JPanel controles = new JPanel(
-                new FlowLayout(FlowLayout.RIGHT));
+                new FlowLayout(FlowLayout.RIGHT)
+        );
 
-        controles.add(boton("Guardar como TXT",
-                e -> guardarComprobante(
-                        usuarioComprobante, movimiento, dialogo)));
+        controles.add(
+                boton(
+                        "Guardar recibo",
+                        e -> guardarReciboHtml(html, dialogo)
+                )
+        );
 
-        controles.add(boton("Cerrar", e -> dialogo.dispose()));
+        controles.add(
+                boton("Imprimir / PDF", e -> {
+                    try {
+                        vista.print();
+
+                    } catch (java.awt.print.PrinterException
+                            | SecurityException error) {
+
+                        JOptionPane.showMessageDialog(
+                                dialogo,
+                                "No se pudo imprimir: "
+                                + error.getMessage()
+                                + "\nLa operación ya fue registrada; "
+                                + "no la repitas.",
+                                "Imprimir comprobante",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                    }
+                })
+        );
+
+        controles.add(
+                boton(
+                        "Guardar TXT",
+                        e -> guardarComprobante(
+                                usuarioComprobante,
+                                movimiento,
+                                dialogo
+                        )
+                )
+        );
+
+        controles.add(
+                boton("Cerrar", e -> dialogo.dispose())
+        );
 
         dialogo.add(controles, BorderLayout.SOUTH);
-        dialogo.setSize(780, 460);
+        dialogo.setSize(850, 680);
         dialogo.setLocationRelativeTo(this);
         dialogo.setVisible(true);
     }
 
-    private void guardarComprobante(
-            Usuario usuarioComprobante,
-            Movimiento movimiento,
-            JDialog padre) {
+    private void guardarReciboHtml(String html, JDialog padre) {
         JFileChooser selector = new JFileChooser();
-        selector.setDialogTitle("Guardar comprobante");
+        selector.setDialogTitle("Guardar recibo con diseño");
 
-        selector.setSelectedFile(new java.io.File(
-                usuarioComprobante.getCodigo()
-                + "-" + movimiento.getReferencia() + ".txt"));
+        selector.setSelectedFile(
+                new java.io.File(
+                        "comprobante-"
+                        + java.util.UUID.randomUUID()
+                                .toString().substring(0, 8)
+                        + ".html"
+                )
+        );
+
+        selector.setFileFilter(
+                new javax.swing.filechooser.FileNameExtensionFilter(
+                        "Recibo HTML (*.html)",
+                        "html"
+                )
+        );
 
         if (selector.showSaveDialog(padre)
                 != JFileChooser.APPROVE_OPTION) {
@@ -1016,9 +1257,79 @@ public class Main extends JFrame {
         Path archivo = selector.getSelectedFile().toPath();
 
         if (!archivo.getFileName().toString()
-                .toLowerCase(java.util.Locale.ROOT).endsWith(".txt")) {
+                .toLowerCase(java.util.Locale.ROOT)
+                .endsWith(".html")) {
+
             archivo = archivo.resolveSibling(
-                    archivo.getFileName() + ".txt");
+                    archivo.getFileName() + ".html"
+            );
+        }
+
+        if (Files.exists(archivo)
+                && JOptionPane.showConfirmDialog(
+                        padre,
+                        "El archivo existe. ¿Deseas reemplazarlo?",
+                        "Confirmar guardado",
+                        JOptionPane.YES_NO_OPTION)
+                != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            Files.writeString(
+                    archivo,
+                    html,
+                    StandardCharsets.UTF_8
+            );
+
+            JOptionPane.showMessageDialog(
+                    padre,
+                    "Recibo guardado. Puedes abrirlo en tu navegador:\n"
+                    + archivo.toAbsolutePath()
+            );
+
+        } catch (IOException | SecurityException error) {
+            JOptionPane.showMessageDialog(
+                    padre,
+                    "No se pudo guardar: " + error.getMessage()
+                    + "\nLa operación ya fue registrada; no la repitas.",
+                    "Guardar comprobante",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
+    }
+
+    private void guardarComprobante(
+            Usuario usuarioComprobante,
+            Movimiento movimiento,
+            JDialog padre) {
+
+        JFileChooser selector = new JFileChooser();
+        selector.setDialogTitle("Guardar comprobante TXT");
+
+        selector.setSelectedFile(
+                new java.io.File(
+                        usuarioComprobante.getCodigo()
+                        + "-"
+                        + movimiento.getReferencia()
+                        + ".txt"
+                )
+        );
+
+        if (selector.showSaveDialog(padre)
+                != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        Path archivo = selector.getSelectedFile().toPath();
+
+        if (!archivo.getFileName().toString()
+                .toLowerCase(java.util.Locale.ROOT)
+                .endsWith(".txt")) {
+
+            archivo = archivo.resolveSibling(
+                    archivo.getFileName() + ".txt"
+            );
         }
 
         if (Files.exists(archivo)
@@ -1041,7 +1352,9 @@ public class Main extends JFrame {
             JOptionPane.showMessageDialog(
                     padre,
                     "Comprobante guardado en:\n"
-                    + archivo.toAbsolutePath());
+                    + archivo.toAbsolutePath()
+            );
+
         } catch (IOException | SecurityException e) {
             JOptionPane.showMessageDialog(
                     padre,
@@ -1054,13 +1367,19 @@ public class Main extends JFrame {
     }
 
     private String textoComprobante(
-            Usuario usuarioComprobante, Movimiento movimiento) {
+            Usuario usuarioComprobante,
+            Movimiento movimiento) {
+
         String numero = banco.ingresar(
-                usuarioComprobante.getCodigo()).getNumeroCuenta();
+                usuarioComprobante.getCodigo()
+        ).getNumeroCuenta();
 
         return "Número de cuenta: " + numero + "\n"
                 + Comprobante.generar(usuarioComprobante, movimiento)
-                        .replace("Código de cuenta: ", "Código de acceso: ");
+                        .replace(
+                                "Código de cuenta: ",
+                                "Código de acceso: "
+                        );
     }
 
     private void mostrarError(String mensaje) {
@@ -1077,11 +1396,12 @@ public class Main extends JFrame {
                 || JOptionPane.showConfirmDialog(
                         this,
                         "Los usuarios, saldos e historiales no se conservan "
-                        + "al cerrar el programa.\nLos comprobantes guardados "
-                        + "sí permanecen. ¿Salir?",
+                        + "al cerrar el programa.\n"
+                        + "Los comprobantes guardados sí permanecen. ¿Salir?",
                         "Cerrar Banco UVG",
                         JOptionPane.YES_NO_OPTION)
                 == JOptionPane.YES_OPTION) {
+
             dispose();
         }
     }
