@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -15,24 +14,32 @@ public final class Comprobante {
                 + "Usuario: " + usuario.getNombreUsuario() + "\n"
                 + "Titular: " + usuario.getNombreCompleto() + "\n"
                 + "Código de cuenta: " + usuario.getCodigo() + "\n"
-                + "Fecha: " + movimiento.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")) + "\n"
+                + "Fecha: " + movimiento.getFecha().format(
+                        DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")) + "\n"
                 + "Operación: " + movimiento.getDescripcion() + "\n"
                 + "Monto: Q" + Dinero.formatear(movimiento.getMonto()) + "\n"
-                + "Saldo anterior: Q" + Dinero.formatear(movimiento.getSaldoAnterior()) + "\n"
-                + "Saldo actual: Q" + Dinero.formatear(movimiento.getSaldoResultante()) + "\n"
+                + "Saldo anterior: Q"
+                + Dinero.formatear(movimiento.getSaldoAnterior()) + "\n"
+                + "Saldo actual: Q"
+                + Dinero.formatear(movimiento.getSaldoResultante()) + "\n"
                 + "Estado: Operación exitosa\n"
                 + "Simulación académica. Sin validez bancaria.\n";
     }
-    public static Path guardar(Usuario usuario, Movimiento movimiento) throws IOException {
+
+    public static Path guardar(Usuario usuario, Movimiento movimiento)
+            throws IOException {
         Path carpeta = Path.of("comprobantes");
         Files.createDirectories(carpeta);
-=======
-package BancoEntrega.src.main.java;
-public Depo Comprobante {
->>>>>>> 7d469c6bb62c2bf01f59f4f267bab01867554cfb
-    
-        String nombre = usuario.getNombreUsuario() + "-" + movimiento.getReferencia()
-                + "-" + UUID.randomUUID().toString().substring(0, 8) + ".txt";
-        return Files.writeString(carpeta.resolve(nombre), generar(usuario, movimiento), StandardCharsets.UTF_8);
+
+        String nombre = usuario.getNombreUsuario()
+                + "-" + movimiento.getReferencia()
+                + "-" + UUID.randomUUID().toString().substring(0, 8)
+                + ".txt";
+
+        return Files.writeString(
+                carpeta.resolve(nombre),
+                generar(usuario, movimiento),
+                StandardCharsets.UTF_8
+        );
     }
 }
