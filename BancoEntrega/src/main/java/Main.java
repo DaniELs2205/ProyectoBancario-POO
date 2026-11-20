@@ -98,7 +98,7 @@ public class Main extends JFrame {
                     }
                 }
             } catch (Exception e) {
-                // Se conserva el tema predeterminado.
+        
             }
 
             Font fuente = new Font(Font.SANS_SERIF, Font.PLAIN, 14);
