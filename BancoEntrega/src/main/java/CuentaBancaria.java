@@ -136,7 +136,7 @@ public class CuentaBancaria {
                 referencia
         );
 
-        // Preparar ambos historiales antes de modificar las cuentas.
+        
         Movimiento[] historialOrigen = movimientos;
         Movimiento[] historialDestino = destino.movimientos;
 
