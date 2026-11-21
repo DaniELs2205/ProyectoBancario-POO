@@ -104,7 +104,7 @@ public class Main extends JFrame {
                     }
                 }
             } catch (Exception e) {
-                // Se conserva el tema predeterminado.
+        
             }
 
             Font fuente = new Font(Font.SANS_SERIF, Font.PLAIN, 14);
@@ -200,7 +200,7 @@ public class Main extends JFrame {
         cabecera.add(acceso, BorderLayout.EAST);
         raiz.add(cabecera, BorderLayout.NORTH);
 
-        // La navegación se controla desde el menú lateral.
+        
         paginas.setUI(new javax.swing.plaf.basic.BasicTabbedPaneUI() {
             @Override
             protected int calculateTabAreaHeight(
