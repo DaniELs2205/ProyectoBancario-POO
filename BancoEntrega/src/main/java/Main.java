@@ -194,7 +194,7 @@ public class Main extends JFrame {
         cabecera.add(acceso, BorderLayout.EAST);
         raiz.add(cabecera, BorderLayout.NORTH);
 
-        // La navegación se controla desde el menú lateral.
+        
         paginas.setUI(new javax.swing.plaf.basic.BasicTabbedPaneUI() {
             @Override
             protected int calculateTabAreaHeight(
