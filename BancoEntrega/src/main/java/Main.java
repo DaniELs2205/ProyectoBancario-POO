@@ -35,6 +35,7 @@ public class Main extends JFrame {
             new JPanel(tarjetasHistorial);
 
     private final JTextField codigoHistorial = new JTextField(22);
+    private final JTextField usuarioIngreso = new JTextField(22);
     private final JTextField codigoIngreso = new JTextField(22);
     private final JTextField montoOperacion = campoNumerico();
     private final JTextField numeroDestino = campoNumerico();
@@ -54,6 +55,11 @@ public class Main extends JFrame {
     private boolean historialDesbloqueado;
     private ConsultaHistorial consultaHistorial;
     private CuentaBancaria cuenta;
+    private CuentaSesion cuentaSesion;
+    private boolean operacionEnCurso;
+    private boolean registroEnCurso;
+    private java.util.List<MovimientoGuardado> movimientosSesion =
+        new java.util.ArrayList<>();
 
     private final JComboBox<String> filtro = new JComboBox<>(
             new String[]{
@@ -77,7 +83,7 @@ public class Main extends JFrame {
     private final DefaultTableModel modeloUsuarios =
             new DefaultTableModel(
                     new String[]{
-                        "Usuario", "Código de acceso", "Número de cuenta"
+                        "Usuario", "Titular", "Número de cuenta"
                     }, 0) {
         @Override
         public boolean isCellEditable(int fila, int columna) {
@@ -119,7 +125,7 @@ public class Main extends JFrame {
     }
 
     public Main() {
-        super("Banco UVG | Cuenta Universitaria");
+        super("WillBAC | Banca educativa");
 
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 
@@ -140,7 +146,7 @@ public class Main extends JFrame {
         JPanel marca = new JPanel(new GridLayout(2, 1, 0, 4));
         marca.setOpaque(false);
 
-        JLabel nombre = new JLabel("BANCO UVG");
+        JLabel nombre = new JLabel("WillBAC");
         nombre.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 32));
         nombre.setForeground(Color.WHITE);
 
@@ -180,7 +186,7 @@ public class Main extends JFrame {
         );
 
         cerrarSesion.addActionListener(e -> {
-            if (cuenta != null || historialDesbloqueado) {
+            if (cuentaSesion != null || cuenta != null || historialDesbloqueado) {
                 cerrarSesion();
             } else {
                 paginas.setSelectedIndex(TAB_INGRESAR);
@@ -212,7 +218,7 @@ public class Main extends JFrame {
                     Graphics g, int colocacion, int seleccion) {
             }
         });
-
+ 
         paginas.setBorder(null);
         paginas.setOpaque(false);
 
@@ -296,7 +302,7 @@ public class Main extends JFrame {
             }
 
             if (paginas.getSelectedIndex() == TAB_HISTORIAL) {
-                codigoHistorial.requestFocusInWindow();
+                cargarHistorialSesion();
             }
 
             if (paginas.getSelectedIndex() == TAB_INGRESAR) {
@@ -359,17 +365,20 @@ public class Main extends JFrame {
         actualizarEstadoSesion();
     }
 
-    private void actualizarEstadoSesion() {
-        boolean consultaAbierta =
-                consultaHistorial != null && historialDesbloqueado;
+        private void actualizarEstadoSesion() {
+    boolean consultaAbierta =
+            consultaHistorial != null && historialDesbloqueado;
 
-        cerrarSesion.setEnabled(true);
-        cerrarSesion.setText(
-                cuenta != null || consultaAbierta
-                        ? "Cerrar sesión"
-                        : "Ingresar"
-        );
-    }
+    boolean sesionAbierta =
+            cuentaSesion != null
+            || cuenta != null
+            || consultaAbierta;
+
+    cerrarSesion.setEnabled(true);
+    cerrarSesion.setText(
+        sesionAbierta ? "Cerrar sesión" : "Ingresar"
+    );
+}
 
     private JPanel crearListaCuentas() {
         JPanel panel = new JPanel(new BorderLayout(0, 20));
@@ -486,35 +495,135 @@ public class Main extends JFrame {
         );
         titulo.setForeground(VERDE);
 
-        formulario.add(titulo, BorderLayout.NORTH);
+        JPanel encabezado = new JPanel(new BorderLayout(0, 15));
+encabezado.setOpaque(false);
+
+java.net.URL rutaImagen =
+        Main.class.getResource("/IMG/banco-ingreso.jpg");
+
+if (rutaImagen != null) {
+    ImageIcon original = new ImageIcon(rutaImagen);
+
+    if (original.getIconWidth() > 0
+            && original.getIconHeight() > 0) {
+
+        double escala = Math.min(
+                360.0 / original.getIconWidth(),
+                180.0 / original.getIconHeight()
+        );
+
+        int ancho = Math.max(
+                1, (int) (original.getIconWidth() * escala)
+        );
+        int alto = Math.max(
+                1, (int) (original.getIconHeight() * escala)
+        );
+
+        Image imagen = original.getImage().getScaledInstance(
+                ancho, alto, Image.SCALE_SMOOTH
+        );
+
+        JLabel ilustracion = new JLabel(new ImageIcon(imagen));
+        ilustracion.setHorizontalAlignment(SwingConstants.CENTER);
+
+        encabezado.add(ilustracion, BorderLayout.CENTER);
+    }
+}
+
+encabezado.add(titulo, BorderLayout.SOUTH);
+formulario.add(encabezado, BorderLayout.NORTH);
 
         JPanel campos = new JPanel(new GridLayout(0, 1, 0, 10));
         campos.setOpaque(false);
+
+        campos.add(new JLabel("Nombre de usuario"));
+        campos.add(usuarioIngreso);
+
         campos.add(new JLabel("Código de acceso"));
         campos.add(codigoIngreso);
 
         formulario.add(campos, BorderLayout.CENTER);
 
         JButton entrar = boton("Ingresar", e -> {
+    String nombreUsuario = usuarioIngreso.getText().trim();
+    String codigo = codigoIngreso.getText();
+
+    if (nombreUsuario.isBlank()) {
+        mostrarError("Escribe tu nombre de usuario.");
+        return;
+    }
+
+    try {
+        Usuario.normalizarCodigo(codigo);
+    } catch (IllegalArgumentException error) {
+        mostrarError(error.getMessage());
+        return;
+    }
+
+    JButton botonIngreso = (JButton) e.getSource();
+    botonIngreso.setEnabled(false);
+    botonIngreso.setText("Comprobando...");
+
+    SwingWorker<CuentaSesion, Void> tarea =
+            new SwingWorker<CuentaSesion, Void>() {
+
+        @Override
+        protected CuentaSesion doInBackground() throws Exception {
+            UsuarioDAO usuarios = new UsuarioDAO();
+
+            if (!usuarios.verificarAcceso(nombreUsuario, codigo)) {
+                return null;
+            }
+
+            CuentaDAO cuentas = new CuentaDAO();
+            return cuentas.buscarPorUsuario(nombreUsuario);
+        }
+
+        @Override
+        protected void done() {
             try {
-                cuenta = banco.ingresar(codigoIngreso.getText());
+                CuentaSesion datos = get();
 
+                if (datos == null) {
+                    mostrarError("Usuario o código incorrectos.");
+                    return;
+                }
+                cuentaSesion = datos;
                 limpiarCamposOperacion();
-                filtro.setSelectedIndex(0);
-                actualizar();
                 habilitarCuenta(true);
+                actualizarResumenSesion();
+                paginas.setSelectedIndex(TAB_OPERACIONES);
 
-                estado.setText(
-                        "Bienvenido. Las operaciones se aplican a esta cuenta."
+                JOptionPane.showMessageDialog(
+                    Main.this,
+                    "Acceso verificado en MySQL."
+                    + "\nTitular: " + datos.nombreCompleto()
+                    + "\nCuenta: " + datos.numeroCuenta()
+                    + "\nSaldo: Q" + Dinero.formatear(datos.saldo()),
+                    "Verificación de acceso",
+                    JOptionPane.INFORMATION_MESSAGE
                 );
 
-                paginas.setSelectedIndex(TAB_OPERACIONES);
-                codigoIngreso.setText("");
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                mostrarError("La verificación fue interrumpida.");
 
-            } catch (IllegalArgumentException error) {
-                mostrarError(error.getMessage());
+            } catch (java.util.concurrent.ExecutionException error) {
+                mostrarError(
+                    "No se pudo completar la consulta: "
+                    + error.getCause().getMessage()
+                );
+
+            } finally {
+                codigoIngreso.setText("");
+                botonIngreso.setEnabled(true);
+                botonIngreso.setText("Ingresar");
             }
-        });
+        }
+    };
+
+    tarea.execute();
+});
 
         codigoIngreso.addActionListener(e -> entrar.doClick());
 
@@ -624,74 +733,115 @@ public class Main extends JFrame {
         tarjetasHistorial.show(panelHistorial, "codigo");
         actualizarEstadoSesion();
     }
-
+    
     private JPanel crearRegistro() {
-        JPanel marco = new JPanel(new GridBagLayout());
-        marco.setOpaque(false);
+    JPanel marco = new JPanel(new GridBagLayout());
+    marco.setOpaque(false);
 
-        JPanel formulario = new JPanel(new BorderLayout(0, 14));
-        formulario.setBackground(Color.WHITE);
-        formulario.setBorder(new EmptyBorder(20, 28, 20, 28));
+    JPanel formulario = new JPanel(new BorderLayout(0, 14));
+    formulario.setBackground(Color.WHITE);
+    formulario.setBorder(new EmptyBorder(20, 28, 20, 28));
 
-        JLabel titulo = new JLabel("Crear usuario y agregar cuenta");
-        titulo.setFont(
-                new Font(Font.SANS_SERIF, Font.BOLD, 22)
-        );
+    JLabel titulo = new JLabel("Crear usuario y agregar cuenta");
+    titulo.setFont(
+        new Font(Font.SANS_SERIF, Font.BOLD, 22)
+    );
+    titulo.setForeground(VERDE);
 
-        formulario.add(titulo, BorderLayout.NORTH);
+    formulario.add(titulo, BorderLayout.NORTH);
 
-        JTextField nombre = new JTextField(28);
-        JTextField usuario = new JTextField(28);
-        JTextField codigo = new JTextField(28);
-        JTextField inicial = campoNumerico();
+    JTextField nombre = new JTextField(28);
+    JTextField usuario = new JTextField(28);
+    JTextField codigo = new JTextField(28);
+    JTextField inicial = campoNumerico();
 
-        inicial.setText("0.00");
+    inicial.setText("0.00");
 
-        JPanel campos = new JPanel();
-        campos.setLayout(
-                new BoxLayout(campos, BoxLayout.Y_AXIS)
-        );
-        campos.setOpaque(false);
+    JPanel campos = new JPanel();
+    campos.setLayout(
+        new BoxLayout(campos, BoxLayout.Y_AXIS)
+    );
+    campos.setOpaque(false);
 
-        campos.add(new JLabel("Nombre completo del titular"));
-        campos.add(nombre);
-        campos.add(new JLabel("Nombre de usuario"));
-        campos.add(usuario);
-        campos.add(new JLabel("Código de acceso (lo eliges tú)"));
-        campos.add(codigo);
-        campos.add(new JLabel("Saldo inicial (Q)"));
-        campos.add(inicial);
-        campos.add(new JLabel(
-                "El número de cuenta se genera automáticamente al registrar."
-        ));
-        campos.add(new JLabel(
-                "Los datos se conservan mientras este programa esté abierto."
-        ));
+    campos.add(new JLabel("Nombre completo del titular"));
+    campos.add(nombre);
 
-        formulario.add(campos, BorderLayout.CENTER);
+    campos.add(new JLabel("Nombre de usuario"));
+    campos.add(usuario);
 
-        JButton crear = boton("Registrar usuario y crear cuenta", e -> {
+    campos.add(new JLabel("Código de acceso (lo eliges tú)"));
+    campos.add(codigo);
+
+    campos.add(new JLabel("Saldo inicial (Q)"));
+    campos.add(inicial);
+
+    campos.add(new JLabel(
+        "El número de cuenta se genera automáticamente al registrar."
+    ));
+
+    campos.add(new JLabel(
+        "Los datos se guardan en MySQL y permanecen al cerrar el programa."
+    ));
+
+    formulario.add(campos, BorderLayout.CENTER);
+    JButton crear = boton("Registrar usuario y crear cuenta", e -> {
+    if (registroEnCurso || operacionEnCurso) {
+        mostrarError("Espera a que termine el proceso actual.");
+        return;
+    }
+    final String nombreUsuario = usuario.getText().trim();
+    final String nombreCompleto = nombre.getText().trim();
+    final String codigoAcceso = codigo.getText();
+    final BigDecimal saldoInicial;
+
+    try {
+        saldoInicial = leerDinero(inicial.getText());
+    } catch (IllegalArgumentException error) {
+        mostrarError(error.getMessage());
+        return;
+    }
+
+    JButton botonRegistro = (JButton) e.getSource();
+
+    registroEnCurso = true;
+    botonRegistro.setEnabled(false);
+    botonRegistro.setText("Registrando...");
+
+    nombre.setEnabled(false);
+    usuario.setEnabled(false);
+    codigo.setEnabled(false);
+    inicial.setEnabled(false);
+
+    SwingWorker<CuentaSesion, Void> tarea =
+            new SwingWorker<CuentaSesion, Void>() {
+
+        @Override
+        protected CuentaSesion doInBackground() throws Exception {
+            RegistroDAO dao = new RegistroDAO();
+
+            return dao.registrar(
+                nombreUsuario,
+                nombreCompleto,
+                codigoAcceso,
+                saldoInicial
+            );
+        }
+
+        @Override
+        protected void done() {
             try {
-                CuentaBancaria nueva = banco.registrar(
-                        usuario.getText().trim(),
-                        nombre.getText(),
-                        codigo.getText(),
-                        leerDinero(inicial.getText())
-                );
-
-                String asignado = nueva.getUsuario().getCodigo();
+                CuentaSesion nueva = get();
 
                 JOptionPane.showMessageDialog(
-                        this,
-                        "Usuario registrado correctamente."
-                        + "\nCódigo de acceso: " + asignado
-                        + "\nNúmero de cuenta: "
-                        + nueva.getNumeroCuenta()
-                        + "\nSaldo inicial: Q"
-                        + Dinero.formatear(nueva.getSaldo())
-                        + "\nAhora ingresa con tu código de acceso.",
-                        "Cuenta creada",
-                        JOptionPane.INFORMATION_MESSAGE
+                    Main.this,
+                    "Usuario y cuenta guardados en MySQL."
+                    + "\nUsuario: " + nueva.nombreUsuario()
+                    + "\nNúmero de cuenta: " + nueva.numeroCuenta()
+                    + "\nSaldo inicial: Q"
+                    + Dinero.formatear(nueva.saldoInicial())
+                    + "\nAhora ingresa con tu usuario y código.",
+                    "Cuenta creada",
+                    JOptionPane.INFORMATION_MESSAGE
                 );
 
                 nombre.setText("");
@@ -702,13 +852,58 @@ public class Main extends JFrame {
                 cerrarSesion();
                 paginas.setSelectedIndex(TAB_INGRESAR);
 
-                codigoIngreso.setText(asignado);
+                usuarioIngreso.setText(nueva.nombreUsuario());
+                codigoIngreso.setText("");
                 codigoIngreso.requestFocusInWindow();
 
-            } catch (IllegalArgumentException error) {
-                mostrarError(error.getMessage());
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+
+                mostrarError(
+                    "Se interrumpió la comprobación del registro."
+                    + "\nRevisa el directorio antes de repetir."
+                );
+
+            } catch (java.util.concurrent.ExecutionException error) {
+                Throwable causa = error.getCause();
+
+                if (causa instanceof IllegalArgumentException) {
+                    mostrarError(causa.getMessage());
+
+                } else if (causa instanceof java.sql.SQLException
+                        && ((java.sql.SQLException) causa)
+                                .getErrorCode() == 1062) {
+
+                    mostrarError(
+                        "Ese nombre de usuario ya está registrado."
+                        + "\nElige otro nombre o inicia sesión."
+                    );
+
+                } else {
+                    mostrarError(
+                        "No se pudo confirmar el registro: "
+                        + causa.getMessage()
+                        + "\nRevisa el directorio antes de repetir."
+                    );
+                }
+
+            } finally {
+                registroEnCurso = false;
+                botonRegistro.setEnabled(true);
+                botonRegistro.setText(
+                    "Registrar usuario y crear cuenta"
+                );
+
+                nombre.setEnabled(true);
+                usuario.setEnabled(true);
+                codigo.setEnabled(true);
+                inicial.setEnabled(true);
             }
-        });
+        }
+    };
+
+    tarea.execute();
+});
 
         inicial.addActionListener(e -> crear.doClick());
 
@@ -727,6 +922,8 @@ public class Main extends JFrame {
 
     private void cerrarSesion() {
         cuenta = null;
+        cuentaSesion = null;
+        usuarioIngreso.setText("");
 
         limpiarCamposOperacion();
         modelo.setRowCount(0);
@@ -781,28 +978,22 @@ public class Main extends JFrame {
 
         herramientas.add(new JLabel("Historial de movimientos"));
         herramientas.add(filtro);
+        herramientas.add(
+            boton("Buscar por número", e -> buscarMovimiento())
+        );
+        herramientas.add(
+            boton(
+                "Generar comprobante",
+                e -> comprobanteSeleccionado()
+            )
+        );
 
         filtro.addActionListener(e -> {
-            if (consultaHistorial != null) {
-                actualizarTabla();
-            }
+        if (cuentaSesion != null && historialDesbloqueado) {
+           actualizarTabla();
+          }
         });
 
-        herramientas.add(
-                boton("Buscar por número", e -> buscarMovimiento())
-        );
-        herramientas.add(
-                boton(
-                        "Generar comprobante",
-                        e -> comprobanteSeleccionado()
-                )
-        );
-        herramientas.add(
-                boton("Consultar otro código", e -> {
-                    bloquearHistorial();
-                    codigoHistorial.requestFocusInWindow();
-                })
-        );
 
         JPanel cabeceraHistorial = new JPanel(
                 new GridLayout(0, 1, 0, 8)
@@ -1181,115 +1372,324 @@ public class Main extends JFrame {
     }
 
     private void operar(boolean esDeposito) {
-        try {
-            BigDecimal valor = leerDinero(montoOperacion.getText());
-
-            Movimiento movimiento = esDeposito
-                    ? cuenta.depositar(valor)
-                    : cuenta.retirar(valor);
-
-            montoOperacion.setText("");
-            operacionExitosa(movimiento);
-
-        } catch (IllegalArgumentException error) {
-            mostrarError(error.getMessage());
-        }
+    if (cuentaSesion == null) {
+        mostrarError("Primero inicia sesión.");
+        return;
     }
 
-    private void transferir() {
-        if (cuenta == null) {
-            mostrarError("Primero ingresa a una cuenta.");
-            return;
-        }
-
-        try {
-            BigDecimal monto = leerDinero(montoOperacion.getText());
-
-            CuentaBancaria destino = banco.buscarPorNumeroCuenta(
-                    numeroDestino.getText().trim()
-            );
-
-            if (destino == cuenta) {
-                throw new IllegalArgumentException(
-                        "Selecciona una cuenta diferente a la tuya."
-                );
-            }
-
-            if (monto.signum() <= 0) {
-                throw new IllegalArgumentException(
-                        "El monto debe ser mayor que cero."
-                );
-            }
-
-            if (monto.compareTo(cuenta.getSaldo()) > 0) {
-                throw new IllegalArgumentException(
-                        "Fondos insuficientes."
-                );
-            }
-
-            int opcion = JOptionPane.showConfirmDialog(
-                    this,
-                    "¿Transferir Q" + Dinero.formatear(monto)
-                    + "\nA: " + destino.getUsuario().getNombreCompleto()
-                    + "\nUsuario: "
-                    + destino.getUsuario().getNombreUsuario()
-                    + "\nNúmero de cuenta: "
-                    + destino.getNumeroCuenta() + "?",
-                    "Confirmar transferencia",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE
-            );
-
-            if (opcion != JOptionPane.YES_OPTION) {
-                estado.setText(
-                        "Transferencia cancelada. Los saldos no cambiaron."
-                );
-                return;
-            }
-
-            Movimiento movimiento =
-                    cuenta.transferirA(destino, monto);
-
-            montoOperacion.setText("");
-            numeroDestino.setText("");
-
-            bloquearHistorial();
-            operacionExitosa(movimiento);
-
-        } catch (IllegalArgumentException error) {
-            mostrarError(error.getMessage());
-        }
+    if (operacionEnCurso) {
+        return;
     }
+
+    final BigDecimal monto;
+
+    try {
+        monto = leerDinero(montoOperacion.getText());
+
+        if (monto.signum() <= 0) {
+            throw new IllegalArgumentException(
+                "El monto debe ser mayor que cero."
+            );
+        }
+
+    } catch (IllegalArgumentException error) {
+        mostrarError(error.getMessage());
+        return;
+    }
+
+    final CuentaSesion sesionOperacion = cuentaSesion;
+    final long numeroCuenta = sesionOperacion.numeroCuenta();
+    final String tipo = esDeposito ? "Depósito" : "Retiro";
+
+    operacionEnCurso = true;
+    estado.setText("Procesando " + tipo.toLowerCase() + "...");
+
+    SwingWorker<Void, Void> tarea = new SwingWorker<Void, Void>() {
+
+        @Override
+        protected Void doInBackground() throws Exception {
+            OperacionDAO dao = new OperacionDAO();
+
+            if (esDeposito) {
+                dao.depositar(numeroCuenta, monto);
+            } else {
+                dao.retirar(numeroCuenta, monto);
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void done() {
+            try {
+                get();
+
+                // No actualizar otra sesión si el usuario cambió.
+                if (cuentaSesion != sesionOperacion) {
+                    return;
+                }
+
+                montoOperacion.setText("");
+                estado.setText(tipo + " registrado en MySQL.");
+                actualizarResumenSesion();
+
+                JOptionPane.showMessageDialog(
+                    Main.this,
+                    tipo + " registrado por Q"
+                    + Dinero.formatear(monto)
+                    + "\nCuenta: " + numeroCuenta,
+                    "Operación registrada",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
+
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+
+                mostrarError(
+                    "Se interrumpió la comprobación del resultado."
+                    + "\nConsulta el historial antes de repetir."
+                );
+
+            } catch (java.util.concurrent.ExecutionException error) {
+                Throwable causa = error.getCause();
+
+                if (causa instanceof IllegalArgumentException) {
+                    mostrarError(causa.getMessage());
+                } else {
+                    mostrarError(
+                        "No se pudo confirmar la operación: "
+                        + causa.getMessage()
+                        + "\nConsulta el historial antes de repetir."
+                    );
+                }
+
+            } finally {
+                operacionEnCurso = false;
+            }
+        }
+    };
+
+    tarea.execute();
+}
+
+        private void transferir() {
+    if (cuentaSesion == null) {
+        mostrarError("Primero inicia sesión.");
+        return;
+    }
+
+    if (operacionEnCurso) {
+        return;
+    }
+
+    final BigDecimal monto;
+    final long destino;
+
+    try {
+        monto = leerDinero(montoOperacion.getText());
+        destino = Long.parseLong(numeroDestino.getText().trim());
+
+        if (monto.signum() <= 0) {
+            throw new IllegalArgumentException(
+                "El monto debe ser mayor que cero."
+            );
+        }
+
+        if (destino <= 0) {
+            throw new IllegalArgumentException(
+                "El número de cuenta destino debe ser positivo."
+            );
+        }
+
+        if (destino == cuentaSesion.numeroCuenta()) {
+            throw new IllegalArgumentException(
+                "No puedes transferir a tu misma cuenta."
+            );
+        }
+
+    } catch (NumberFormatException error) {
+        mostrarError("Escribe un número de cuenta destino válido.");
+        return;
+
+    } catch (IllegalArgumentException error) {
+        mostrarError(error.getMessage());
+        return;
+    }
+
+    final CuentaSesion sesionOperacion = cuentaSesion;
+    final long origen = sesionOperacion.numeroCuenta();
+
+    int respuesta = JOptionPane.showConfirmDialog(
+        this,
+        "¿Transferir Q" + Dinero.formatear(monto)
+        + "\nDesde la cuenta: " + origen
+        + "\nHacia la cuenta: " + destino + "?",
+        "Confirmar transferencia",
+        JOptionPane.YES_NO_OPTION,
+        JOptionPane.QUESTION_MESSAGE
+    );
+
+    if (respuesta != JOptionPane.YES_OPTION) {
+        estado.setText("Transferencia cancelada.");
+        return;
+    }
+
+    operacionEnCurso = true;
+    estado.setText("Procesando transferencia...");
+
+    SwingWorker<Void, Void> tarea = new SwingWorker<Void, Void>() {
+
+        @Override
+        protected Void doInBackground() throws Exception {
+            OperacionDAO dao = new OperacionDAO();
+            dao.transferir(origen, destino, monto);
+            return null;
+        }
+
+        @Override
+        protected void done() {
+            try {
+                get();
+
+                if (cuentaSesion != sesionOperacion) {
+                    return;
+                }
+
+                montoOperacion.setText("");
+                numeroDestino.setText("");
+
+                estado.setText("Transferencia registrada en MySQL.");
+                actualizarResumenSesion();
+
+                JOptionPane.showMessageDialog(
+                    Main.this,
+                    "Transferencia registrada por Q"
+                    + Dinero.formatear(monto)
+                    + "\nCuenta destino: " + destino,
+                    "Transferencia realizada",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
+
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+
+                mostrarError(
+                    "Se interrumpió la comprobación del resultado."
+                    + "\nConsulta el historial antes de repetir."
+                );
+
+            } catch (java.util.concurrent.ExecutionException error) {
+                Throwable causa = error.getCause();
+
+                if (causa instanceof IllegalArgumentException) {
+                    mostrarError(causa.getMessage());
+                } else {
+                    mostrarError(
+                        "No se pudo confirmar la transferencia: "
+                        + causa.getMessage()
+                        + "\nConsulta el historial antes de repetir."
+                    );
+                }
+
+            } finally {
+                operacionEnCurso = false;
+            }
+        }
+    };
+
+    tarea.execute();
+}
 
     private void retirarTodo() {
-        if (cuenta.getSaldo().signum() == 0) {
-            mostrarError(
-                    "No tienes saldo disponible para retirar."
-            );
-            return;
-        }
-
-        int opcion = JOptionPane.showConfirmDialog(
-                this,
-                "¿Retirar Q" + Dinero.formatear(cuenta.getSaldo())
-                + " y dejar el saldo en cero?",
-                "Confirmar retiro total",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-        );
-
-        if (opcion == JOptionPane.YES_OPTION) {
-            try {
-                operacionExitosa(cuenta.retirarTodo());
-            } catch (IllegalArgumentException e) {
-                mostrarError(e.getMessage());
-            }
-        } else {
-            estado.setText(
-                    "Retiro cancelado. Tu saldo no cambió."
-            );
-        }
+    if (cuentaSesion == null) {
+        mostrarError("Primero inicia sesión.");
+        return;
     }
+
+    if (operacionEnCurso) {
+        return;
+    }
+
+    final CuentaSesion sesionOperacion = cuentaSesion;
+    final long numeroCuenta = sesionOperacion.numeroCuenta();
+
+    int respuesta = JOptionPane.showConfirmDialog(
+        this,
+        "¿Retirar todo el saldo disponible de la cuenta "
+        + numeroCuenta + "?"
+        + "\nSe retirará el saldo existente al procesar la operación.",
+        "Confirmar retiro total",
+        JOptionPane.YES_NO_OPTION,
+        JOptionPane.QUESTION_MESSAGE
+    );
+
+    if (respuesta != JOptionPane.YES_OPTION) {
+        estado.setText("Retiro total cancelado.");
+        return;
+    }
+
+    operacionEnCurso = true;
+    estado.setText("Procesando retiro total...");
+
+    SwingWorker<BigDecimal, Void> tarea =
+            new SwingWorker<BigDecimal, Void>() {
+
+        @Override
+        protected BigDecimal doInBackground() throws Exception {
+            OperacionDAO dao = new OperacionDAO();
+            return dao.retirarTodo(numeroCuenta);
+        }
+
+        @Override
+        protected void done() {
+            try {
+                BigDecimal retirado = get();
+
+                if (cuentaSesion != sesionOperacion) {
+                    return;
+                }
+
+                montoOperacion.setText("");
+                estado.setText("Retiro total registrado en MySQL.");
+                actualizarResumenSesion();
+
+                JOptionPane.showMessageDialog(
+                    Main.this,
+                    "Se retiraron Q" + Dinero.formatear(retirado)
+                    + "\nCuenta: " + numeroCuenta,
+                    "Retiro realizado",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
+
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+
+                mostrarError(
+                    "Se interrumpió la comprobación del resultado."
+                    + "\nConsulta el historial antes de repetir."
+                );
+
+            } catch (java.util.concurrent.ExecutionException error) {
+                Throwable causa = error.getCause();
+
+                if (causa instanceof IllegalArgumentException) {
+                    mostrarError(causa.getMessage());
+                } else {
+                    mostrarError(
+                        "No se pudo confirmar el retiro: "
+                        + causa.getMessage()
+                        + "\nConsulta el historial antes de repetir."
+                    );
+                }
+
+            } finally {
+                operacionEnCurso = false;
+            }
+        }
+    };
+
+    tarea.execute();
+}
 
     private void operacionExitosa(Movimiento movimiento) {
         actualizar();
@@ -1348,130 +1748,366 @@ public class Main extends JFrame {
         actualizarTabla();
     }
 
-    private void actualizarUsuarios() {
-        totalCuentas.setText(
-                "Directorio de cuentas ("
-                + banco.getCantidadUsuarios()
-                + ")"
-        );
+        private void actualizarUsuarios() {
+    actualizarEstadoSesion();
+    modeloUsuarios.setRowCount(0);
+    totalCuentas.setText("Cargando cuentas...");
 
-        actualizarEstadoSesion();
-        modeloUsuarios.setRowCount(0);
+    SwingWorker<java.util.List<CuentaDirectorio>, Void> tarea =
+            new SwingWorker<java.util.List<CuentaDirectorio>, Void>() {
 
-        for (CuentaBancaria registrada : banco.getCuentas()) {
-            Usuario usuario = registrada.getUsuario();
+        @Override
+        protected java.util.List<CuentaDirectorio> doInBackground()
+                throws Exception {
 
-            modeloUsuarios.addRow(new Object[]{
-                usuario.getNombreUsuario(),
-                usuario.getCodigo(),
-                registrada.getNumeroCuenta()
-            });
+            CuentaDAO dao = new CuentaDAO();
+            return dao.listarDirectorio();
+        }
+
+        @Override
+        protected void done() {
+            try {
+                java.util.List<CuentaDirectorio> cuentas = get();
+
+                modeloUsuarios.setRowCount(0);
+
+                for (CuentaDirectorio registrada : cuentas) {
+                    modeloUsuarios.addRow(new Object[]{
+                        registrada.nombreUsuario(),
+                        registrada.nombreCompleto(),
+                        registrada.numeroCuenta()
+                    });
+                }
+
+                totalCuentas.setText(
+                    "Directorio de cuentas (" + cuentas.size() + ")"
+                );
+
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                totalCuentas.setText("Consulta interrumpida.");
+
+            } catch (java.util.concurrent.ExecutionException error) {
+                totalCuentas.setText("No se pudieron cargar las cuentas.");
+
+                mostrarError(
+                    "Error al consultar el directorio: "
+                    + error.getCause().getMessage()
+                );
+            }
+        }
+    };
+
+    tarea.execute();
+}
+
+
+private void actualizarTabla() {
+    modelo.setRowCount(0);
+
+    if (cuentaSesion == null || !historialDesbloqueado) {
+        return;
+    }
+
+    int filtroSeleccionado = filtro.getSelectedIndex();
+
+    for (MovimientoGuardado movimiento : movimientosSesion) {
+
+        boolean mostrar = switch (filtroSeleccionado) {
+            case 1 -> movimiento.tipo().equals("DEPOSITO");
+
+            case 2 -> movimiento.tipo().equals("RETIRO");
+
+            case 3 ->
+                movimiento.tipo().equals("TRANSFERENCIA_ENTRADA")
+                || movimiento.tipo().equals("TRANSFERENCIA_SALIDA");
+
+            default -> true;
+        };
+
+        if (!mostrar) {
+            continue;
+        }
+
+        modelo.addRow(new Object[]{
+            movimiento.numero(),
+            movimiento.fecha().format(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
+            ),
+            movimiento.descripcion(),
+            movimiento.monto(),
+            movimiento.saldoResultante()
+        });
+    }
+
+    tabla.getAccessibleContext().setAccessibleDescription(
+        "Historial de la cuenta "
+        + cuentaSesion.numeroCuenta()
+        + ". Movimientos mostrados: "
+        + modelo.getRowCount()
+    );
+}
+
+private void buscarMovimiento() {
+    if (cuentaSesion == null || !historialDesbloqueado) {
+        mostrarError("Primero abre el historial de tu cuenta.");
+        return;
+    }
+
+    String texto = JOptionPane.showInputDialog(
+        this,
+        "Número de movimiento:",
+        "Buscar movimiento",
+        JOptionPane.QUESTION_MESSAGE
+    );
+
+    if (texto == null) {
+        return;
+    }
+
+    final int numero;
+
+    try {
+        numero = Integer.parseInt(texto.trim());
+
+        if (numero <= 0) {
+            throw new NumberFormatException();
+        }
+
+    } catch (NumberFormatException error) {
+        mostrarError("Escribe un número entero mayor que cero.");
+        return;
+    }
+
+    MovimientoGuardado encontrado = null;
+
+    for (MovimientoGuardado movimiento : movimientosSesion) {
+        if (movimiento.numero() == numero) {
+            encontrado = movimiento;
+            break;
         }
     }
 
-    private void actualizarTabla() {
-        modelo.setRowCount(0);
-
-        if (consultaHistorial == null || !historialDesbloqueado) {
-            return;
-        }
-
-        int tipo = filtro.getSelectedIndex();
-
-        tabla.getAccessibleContext().setAccessibleDescription(
-                formatearArreglo(
-                        consultaHistorial.getMovimientos()
-                )
+    if (encontrado == null) {
+        mostrarError(
+            "No existe ese movimiento en el historial cargado."
         );
+        return;
+    }
 
-        for (Movimiento m : consultaHistorial.getMovimientos()) {
-            if ((tipo == 1 && !(m instanceof Deposito))
-                    || (tipo == 2 && !(m instanceof Retiro))
-                    || (tipo == 3 && !(m instanceof Transferencia))) {
-                continue;
+    // Mostrar todos para que el filtro no oculte el resultado.
+    filtro.setSelectedIndex(0);
+    actualizarTabla();
+
+    for (int filaModelo = 0;
+            filaModelo < modelo.getRowCount();
+            filaModelo++) {
+
+        int numeroFila =
+                ((Number) modelo.getValueAt(filaModelo, 0)).intValue();
+
+        if (numeroFila == numero) {
+            int filaVisible =
+                    tabla.convertRowIndexToView(filaModelo);
+
+            if (filaVisible >= 0) {
+                tabla.setRowSelectionInterval(
+                    filaVisible, filaVisible
+                );
+
+                tabla.scrollRectToVisible(
+                    tabla.getCellRect(filaVisible, 0, true)
+                );
             }
 
-            modelo.addRow(new Object[]{
-                m.getNumero(),
-                m.getFecha().format(
-                        DateTimeFormatter.ofPattern(
-                                "dd/MM/yyyy HH:mm:ss"
-                        )
-                ),
-                m.getDescripcion(),
-                m.getMonto(),
-                m.getSaldoResultante()
-            });
+            break;
+        }
+    }
+}
+
+private void comprobanteSeleccionado() {
+    if (cuentaSesion == null || !historialDesbloqueado) {
+        mostrarError("Primero abre el historial de tu cuenta.");
+        return;
+    }
+
+    int filaVisible = tabla.getSelectedRow();
+
+    if (filaVisible < 0) {
+        mostrarError("Selecciona un movimiento de la tabla.");
+        return;
+    }
+
+    int filaModelo = tabla.convertRowIndexToModel(filaVisible);
+
+    int numero = ((Number) modelo.getValueAt(
+        filaModelo, 0
+    )).intValue();
+
+    MovimientoGuardado seleccionado = null;
+
+    for (MovimientoGuardado movimiento : movimientosSesion) {
+        if (movimiento.numero() == numero) {
+            seleccionado = movimiento;
+            break;
         }
     }
 
-    private void buscarMovimiento() {
-        String numero = JOptionPane.showInputDialog(
-                this,
-                "Número de movimiento:",
-                "Buscar movimiento",
-                JOptionPane.QUESTION_MESSAGE
+    if (seleccionado == null) {
+        mostrarError(
+            "No se encontró el movimiento."
+            + "\nVuelve a abrir el historial."
         );
+        return;
+    }
 
-        if (numero == null) {
-            return;
-        }
+    // Preparar ambos formatos con los mismos datos.
+    final String html =
+            Comprobante.generarHtml(cuentaSesion, seleccionado);
 
-        try {
-            Movimiento movimiento =
-                    consultaHistorial.buscarMovimiento(
-                            Integer.parseInt(numero.trim())
-                    );
+    final String texto =
+            Comprobante.generar(cuentaSesion, seleccionado);
 
-            filtro.setSelectedIndex(0);
+    final String nombreArchivo =
+            "comprobante-"
+            + cuentaSesion.numeroCuenta()
+            + "-" + seleccionado.numero() + ".txt";
 
-            for (int i = 0; i < modelo.getRowCount(); i++) {
-                if (((Integer) modelo.getValueAt(i, 0))
-                        == movimiento.getNumero()) {
+    JDialog dialogo = new JDialog(
+        this,
+        "Comprobante del movimiento " + seleccionado.numero(),
+        true
+    );
 
-                    int fila = tabla.convertRowIndexToView(i);
+    dialogo.setDefaultCloseOperation(
+        WindowConstants.DISPOSE_ON_CLOSE
+    );
 
-                    tabla.setRowSelectionInterval(fila, fila);
-                    tabla.scrollRectToVisible(
-                            tabla.getCellRect(fila, 0, true)
-                    );
+    JEditorPane vista = new JEditorPane("text/html", html);
+    vista.setEditable(false);
+    vista.setBackground(Color.WHITE);
+    vista.setCaretPosition(0);
 
-                    estado.setText(
-                            "Movimiento encontrado: "
-                            + movimiento.getReferencia()
-                    );
-                    break;
+    dialogo.add(
+        new JScrollPane(vista),
+        BorderLayout.CENTER
+    );
+
+    JPanel controles = new JPanel(
+        new FlowLayout(FlowLayout.RIGHT)
+    );
+
+    // Reutiliza el método de guardado HTML que ya existe.
+    controles.add(
+        boton("Guardar HTML", e ->
+            guardarReciboHtml(html, dialogo)
+        )
+    );
+
+    controles.add(
+        boton("Imprimir / PDF", e -> {
+            try {
+                vista.print();
+
+            } catch (java.awt.print.PrinterException
+                    | SecurityException error) {
+
+                JOptionPane.showMessageDialog(
+                    dialogo,
+                    "No se pudo imprimir: " + error.getMessage()
+                    + "\nEl movimiento guardado no se modifica.",
+                    "Error de impresión",
+                    JOptionPane.ERROR_MESSAGE
+                );
+            }
+        })
+    );
+
+    controles.add(
+        boton("Guardar TXT", e -> {
+            JFileChooser selector = new JFileChooser();
+            selector.setDialogTitle("Guardar comprobante TXT");
+
+            selector.setSelectedFile(
+                new java.io.File(nombreArchivo)
+            );
+
+            selector.setFileFilter(
+                new javax.swing.filechooser.FileNameExtensionFilter(
+                    "Archivo de texto (*.txt)", "txt"
+                )
+            );
+
+            if (selector.showSaveDialog(dialogo)
+                    != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+
+            Path archivo = selector.getSelectedFile().toPath();
+
+            if (!archivo.getFileName().toString()
+                    .toLowerCase(java.util.Locale.ROOT)
+                    .endsWith(".txt")) {
+
+                archivo = archivo.resolveSibling(
+                    archivo.getFileName() + ".txt"
+                );
+            }
+
+            if (Files.exists(archivo)) {
+                int respuesta = JOptionPane.showConfirmDialog(
+                    dialogo,
+                    "El archivo ya existe. ¿Deseas reemplazarlo?",
+                    "Confirmar guardado",
+                    JOptionPane.YES_NO_OPTION
+                );
+
+                if (respuesta != JOptionPane.YES_OPTION) {
+                    return;
                 }
             }
 
-        } catch (NumberFormatException e) {
-            mostrarError(
-                    "Escribe un número de movimiento válido."
-            );
-        } catch (IllegalArgumentException e) {
-            mostrarError(e.getMessage());
-        }
-    }
+            try {
+                Files.writeString(
+                    archivo, texto, StandardCharsets.UTF_8
+                );
 
-    private void comprobanteSeleccionado() {
-        int seleccion = tabla.getSelectedRow();
+                JOptionPane.showMessageDialog(
+                    dialogo,
+                    "Comprobante guardado en:\n"
+                    + archivo.toAbsolutePath()
+                );
 
-        if (seleccion < 0) {
-            mostrarError(
-                    "Selecciona primero una operación en la tabla."
-            );
-            return;
-        }
+            } catch (IOException | SecurityException error) {
+                JOptionPane.showMessageDialog(
+                    dialogo,
+                    "No se pudo guardar: " + error.getMessage()
+                    + "\nEl movimiento guardado no se modifica.",
+                    "Error al guardar",
+                    JOptionPane.ERROR_MESSAGE
+                );
+            }
+        })
+    );
 
-        int fila = tabla.convertRowIndexToModel(seleccion);
+    controles.add(
+        boton("Cerrar", e -> dialogo.dispose())
+    );
 
-        mostrarComprobante(
-                consultaHistorial.getUsuario(),
-                consultaHistorial.buscarMovimiento(
-                        (Integer) modelo.getValueAt(fila, 0)
-                )
-        );
-    }
+    dialogo.add(controles, BorderLayout.SOUTH);
+
+    Rectangle pantalla = GraphicsEnvironment
+            .getLocalGraphicsEnvironment()
+            .getMaximumWindowBounds();
+
+    dialogo.setSize(
+        Math.min(850, pantalla.width),
+        Math.min(680, pantalla.height)
+    );
+
+    dialogo.setLocationRelativeTo(this);
+    dialogo.setVisible(true);
+}
 
     private void mostrarComprobante(Movimiento movimiento) {
         mostrarComprobante(
@@ -1719,18 +2355,27 @@ public class Main extends JFrame {
     }
 
     private void salir() {
-        if (banco.getCantidadUsuarios() == 0
-                || JOptionPane.showConfirmDialog(
-                        this,
-                        "Los usuarios, saldos e historiales no se conservan "
-                        + "al cerrar el programa.\n"
-                        + "Los comprobantes guardados sí permanecen. ¿Salir?",
-                        "Cerrar Banco UVG",
-                        JOptionPane.YES_NO_OPTION)
-                == JOptionPane.YES_OPTION) {
-            dispose();
-        }
+    if (operacionEnCurso || registroEnCurso) {
+        mostrarError(
+            "Hay un proceso en curso."
+            + "\nEspera a que termine antes de cerrar."
+        );
+        return;
     }
+
+    int respuesta = JOptionPane.showConfirmDialog(
+        this,
+        "¿Deseas cerrar Banco UVG?"
+        + "\nLos datos guardados en MySQL se conservarán.",
+        "Cerrar aplicación",
+        JOptionPane.YES_NO_OPTION,
+        JOptionPane.QUESTION_MESSAGE
+    );
+
+    if (respuesta == JOptionPane.YES_OPTION) {
+        dispose();
+    }
+}
 
     public static <T> String formatearArreglo(T[] datos) {
         if (datos.length == 0) {
@@ -1745,4 +2390,158 @@ public class Main extends JFrame {
 
         return texto.toString();
     }
+
+    private void actualizarResumenSesion() {
+    if (cuentaSesion == null) {
+        return;
+    }
+
+    final CuentaSesion sesionConsultada = cuentaSesion;
+
+    SwingWorker<ResumenCuenta, Void> tarea =
+            new SwingWorker<ResumenCuenta, Void>() {
+
+        @Override
+        protected ResumenCuenta doInBackground() throws Exception {
+            CuentaDAO dao = new CuentaDAO();
+
+            return dao.consultarResumen(
+                sesionConsultada.numeroCuenta()
+            );
+        }
+
+        @Override
+        protected void done() {
+            try {
+                ResumenCuenta resumen = get();
+
+                // Evita mostrar datos si cambió o terminó la sesión.
+                if (cuentaSesion != sesionConsultada) {
+                    return;
+                }
+
+                titular.setText(
+                    sesionConsultada.nombreCompleto()
+                    + " | Usuario: "
+                    + sesionConsultada.nombreUsuario()
+                );
+
+                detalleCuenta.setText(
+                    "Número de cuenta: "
+                    + sesionConsultada.numeroCuenta()
+                    + " | Saldo inicial: Q"
+                    + Dinero.formatear(
+                        sesionConsultada.saldoInicial()
+                    )
+                );
+
+                saldo.setText(
+                    "Q" + Dinero.formatear(resumen.saldo())
+                );
+
+                depositado.setText(
+                    "Q" + Dinero.formatear(resumen.totalDepositos())
+                );
+
+                retirado.setText(
+                    "Q" + Dinero.formatear(resumen.totalRetiros())
+                );
+
+                operaciones.setText(
+                    String.valueOf(resumen.cantidadMovimientos())
+                );
+
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+
+            } catch (java.util.concurrent.ExecutionException error) {
+    Throwable causa = error.getCause();
+    causa.printStackTrace();
+
+    if (cuentaSesion == sesionConsultada) {
+        mostrarError(
+            "No se pudo actualizar el resumen."
+            + "\nDetalle: " + causa.getMessage()
+        );
+    }
+}
+        }
+    };
+
+    tarea.execute();
+}
+
+private void cargarHistorialSesion() {
+    if (cuentaSesion == null) {
+        mostrarError("Primero inicia sesión.");
+        paginas.setSelectedIndex(TAB_INGRESAR);
+        return;
+    }
+
+    final CuentaSesion sesionConsultada = cuentaSesion;
+
+    historialDesbloqueado = false;
+    movimientosSesion.clear();
+    modelo.setRowCount(0);
+
+    titularHistorial.setText(
+        "Titular: " + sesionConsultada.nombreCompleto()
+        + " | Cuenta: " + sesionConsultada.numeroCuenta()
+    );
+
+    saldoHistorial.setText("Cargando movimientos...");
+    tarjetasHistorial.show(panelHistorial, "datos");
+
+    SwingWorker<java.util.List<MovimientoGuardado>, Void> tarea =
+            new SwingWorker<java.util.List<MovimientoGuardado>, Void>() {
+
+        @Override
+        protected java.util.List<MovimientoGuardado> doInBackground()
+                throws Exception {
+
+            MovimientoDAO dao = new MovimientoDAO();
+
+            return dao.listarPorCuenta(
+                sesionConsultada.numeroCuenta()
+            );
+        }
+
+        @Override
+        protected void done() {
+            // No mostrar datos de otra sesión ni de otra pantalla.
+            if (cuentaSesion != sesionConsultada
+                    || paginas.getSelectedIndex() != TAB_HISTORIAL) {
+                return;
+            }
+
+            try {
+                movimientosSesion = get();
+                historialDesbloqueado = true;
+
+                saldoHistorial.setText(
+                    "Movimientos registrados: "
+                    + movimientosSesion.size()
+                );
+
+                filtro.setSelectedIndex(0);
+                actualizarTabla();
+
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                saldoHistorial.setText("Carga interrumpida.");
+
+            } catch (java.util.concurrent.ExecutionException error) {
+                saldoHistorial.setText("No se pudo cargar el historial.");
+
+                mostrarError(
+                    "Error al consultar los movimientos: "
+                    + error.getCause().getMessage()
+                );
+            }
+        }
+    };
+
+    tarea.execute();
+}
+
 }

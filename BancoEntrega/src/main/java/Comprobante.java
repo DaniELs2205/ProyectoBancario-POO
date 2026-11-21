@@ -197,6 +197,187 @@ public final class Comprobante {
                 + "</html>";
     }
 
+    public static String generar(
+        CuentaSesion cuenta, MovimientoGuardado movimiento) {
+
+    return "WillBAC - COMPROBANTE DE OPERACIÓN\n"
+            + "Proyecto académico - operación ficticia\n\n"
+            + "Referencia: " + movimiento.referencia() + "\n"
+            + "Movimiento: " + movimiento.numero() + "\n"
+            + "Usuario: " + cuenta.nombreUsuario() + "\n"
+            + "Titular: " + cuenta.nombreCompleto() + "\n"
+            + "Número de cuenta: " + cuenta.numeroCuenta() + "\n"
+            + "Fecha: " + movimiento.fecha().format(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
+            ) + "\n"
+            + "Operación: " + movimiento.descripcion() + "\n"
+            + "Monto: Q"
+            + Dinero.formatear(movimiento.monto()) + "\n"
+            + "Saldo anterior: Q"
+            + Dinero.formatear(movimiento.saldoAnterior()) + "\n"
+            + "Saldo después de la operación: Q"
+            + Dinero.formatear(movimiento.saldoResultante()) + "\n"
+            + "Estado: Operación registrada\n";
+}
+
+public static String generarHtml(
+        CuentaSesion cuenta, MovimientoGuardado movimiento) {
+
+    String fecha = movimiento.fecha().format(
+        DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
+    );
+
+    String monto = "Q " + Dinero.formatear(movimiento.monto());
+
+    String tipo = switch (movimiento.tipo()) {
+        case "DEPOSITO" -> "Depósito";
+        case "RETIRO" -> "Retiro";
+        case "TRANSFERENCIA_ENTRADA" -> "Transferencia recibida";
+        case "TRANSFERENCIA_SALIDA" -> "Transferencia enviada";
+        default -> movimiento.tipo();
+    };
+
+    String contraparte = "";
+
+    if (movimiento.tipo().equals("TRANSFERENCIA_ENTRADA")
+            || movimiento.tipo().equals("TRANSFERENCIA_SALIDA")) {
+
+        boolean entrada =
+                movimiento.tipo().equals("TRANSFERENCIA_ENTRADA");
+
+        contraparte =
+                fila(
+                    entrada ? "Cuenta de origen" : "Cuenta destino",
+                    movimiento.cuentaContraparte()
+                )
+                + fila(
+                    "Usuario contraparte",
+                    movimiento.usuarioContraparte()
+                );
+    }
+
+    String datos =
+            fila("Titular", cuenta.nombreCompleto())
+            + fila("Usuario", cuenta.nombreUsuario())
+            + fila("Número de cuenta",
+                   Long.toString(cuenta.numeroCuenta()))
+            + contraparte
+            + fila("Fecha y hora", fecha)
+            + fila("Movimiento", Integer.toString(movimiento.numero()))
+            + "<tr><td valign='top'><b>Referencia</b></td><td>"
+            + referenciaHtml(movimiento.referencia())
+            + "</td></tr>";
+
+    String saldos =
+            fila(
+                "Saldo anterior",
+                "Q " + Dinero.formatear(movimiento.saldoAnterior())
+            )
+            + fila(
+                "Saldo después de la operación",
+                "Q " + Dinero.formatear(movimiento.saldoResultante())
+            );
+
+    return """
+        <html>
+        <head>
+            <meta charset='UTF-8'>
+            <title>Comprobante Banco UVG</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    font-size: 12pt;
+                    color: #222222;
+                    background-color: #ffffff;
+                    margin: 24px;
+                }
+                td { padding: 7px; }
+                th { padding: 9px; }
+            </style>
+        </head>
+        <body>
+            <table width='100%%' cellpadding='8' cellspacing='0'>
+                <tr>
+                    <td>
+                        <font color='#14644E' size='7'>
+                            <b>BANCO UVG</b>
+                        </font><br>
+                        <font color='#555555'>
+                            Proyecto académico de banca
+                        </font>
+                    </td>
+                    <td align='right'>
+                        <b>COMPROBANTE</b><br>
+                        Operación registrada
+                    </td>
+                </tr>
+            </table>
+
+            <hr><br>
+            <h2 align='center'>COMPROBANTE DE OPERACIÓN</h2>
+            <p align='center'>%s</p><br>
+
+            <table width='100%%' cellpadding='6' cellspacing='0'>
+                %s
+            </table><br>
+
+            <table width='100%%' border='1'
+                   cellpadding='9' cellspacing='0'>
+                <tr bgcolor='#14644E'>
+                    <th align='left'>
+                        <font color='white'>CONCEPTO</font>
+                    </th>
+                    <th align='right'>
+                        <font color='white'>VALOR</font>
+                    </th>
+                </tr>
+                <tr>
+                    <td>%s</td>
+                    <td align='right'>%s</td>
+                </tr>
+                <tr bgcolor='#EFF5F2'>
+                    <td><b>TOTAL DE LA OPERACIÓN</b></td>
+                    <td align='right'><b>%s</b></td>
+                </tr>
+            </table><br>
+
+            <table width='100%%' cellpadding='7' cellspacing='0'>
+                %s
+            </table><br>
+
+            <table width='100%%' border='1'
+                   cellpadding='8' cellspacing='0'>
+                <tr bgcolor='#E6E6E6'>
+                    <th colspan='2'>DATOS DE LA OPERACIÓN</th>
+                </tr>
+                %s
+                %s
+            </table><br>
+
+            <p align='center'>
+                <font color='#14644E'>
+                    <b>Gracias por utilizar Banco UVG</b>
+                </font>
+            </p>
+            <p align='center'>
+                <font size='3' color='#555555'>
+                    Simulador educativo. Operación ficticia.
+                </font>
+            </p>
+        </body>
+        </html>
+        """.formatted(
+            escapar(tipo),
+            datos,
+            escapar(tipo),
+            escapar(monto),
+            escapar(monto),
+            saldos,
+            fila("Moneda", "Quetzales (GTQ)"),
+            fila("Estado", "Operación registrada")
+        );
+}
+
     private static String fila(String etiqueta, String valor) {
         return "<tr>"
                 + "<td valign='top'><b>"
